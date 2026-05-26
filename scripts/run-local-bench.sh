@@ -327,9 +327,35 @@ echo "  Scheduler: ${SCHEDULER_URL}"
 echo ""
 
 # ---------------------------------------------------------------------------
-# Step 3: Run the benchmark
+# Step 3: Real-Redis preflight (if REDIS_URL is set)
 # ---------------------------------------------------------------------------
-echo "Step 3: Running benchmark …"
+echo "Step 3: Real-Redis preflight …"
+echo ""
+
+if [ -n "${REDIS_URL:-}" ]; then
+    echo "  REDIS_URL=${REDIS_URL} — running real-Redis Lua integration tests …"
+    if ! "$PYTHON" -m pytest \
+            tests/integration/test_real_redis.py \
+            -m real_redis \
+            -x \
+            --tb=short \
+            -q \
+            2>&1 | tee /dev/stderr; then
+        echo ""
+        echo "ERROR: real-Redis preflight FAILED — aborting benchmark." >&2
+        echo "       Fix the Lua scripts on real Redis before re-running." >&2
+        exit 1
+    fi
+    echo "  real-Redis preflight PASSED"
+else
+    echo "  REDIS_URL not set — skipping real-Redis preflight (set REDIS_URL to enable)"
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
+# Step 4: Run the benchmark
+# ---------------------------------------------------------------------------
+echo "Step 4: Running benchmark …"
 echo ""
 
 BENCH_CMD=(
@@ -351,7 +377,7 @@ cd "$REPO_ROOT"
 "${BENCH_CMD[@]}"
 
 # ---------------------------------------------------------------------------
-# Step 4: Report path
+# Step 5: Report path
 # ---------------------------------------------------------------------------
 echo ""
 echo "================================================"

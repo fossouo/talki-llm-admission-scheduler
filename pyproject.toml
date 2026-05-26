@@ -46,3 +46,6 @@ target-version = ["py312"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+  "real_redis: integration tests that require a real Redis at REDIS_URL (skip by default in CI)",
+]
