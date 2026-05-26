@@ -17,13 +17,13 @@ services:
         condition: service_healthy
     environment:
       # Mount the xeon-specific config; env var tells the app where to find it.
-      SCHEDULER_CONFIG: /app/config/xeon.yaml
+      SCHEDULER_CONFIG: /ap./config/config.yaml
       SCHEDULER_LOG_DIR: /var/log/scheduler
     volumes:
       # JSONL event logs — host dir must be owned by UID 10001 (see runbook)
       - /mnt/talki-logs/admission-scheduler:/var/log/scheduler
       # Xeon config override (read-only; avoids rebuilding image for config tweaks)
-      - ./config/xeon.yaml:/app/config/xeon.yaml:ro
+      - ./config/config.yaml:/ap./config/config.yaml:ro
     # host.docker.internal → Docker bridge gateway on Linux.
     # Requires Docker Engine 20.10+.  Used by config/xeon.yaml for
     # backend_litellm_url: "http://host.docker.internal:4000".

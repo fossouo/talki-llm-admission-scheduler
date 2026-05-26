@@ -1,0 +1,19 @@
+scheduler:
+  redis_url: redis://admission-scheduler-redis:6379/0
+  backend_litellm_url: http://inference-gateway.local:4000
+  log_dir: /var/log/scheduler
+
+defaults:
+  max_concurrency: 2
+  priority: 5
+
+models:
+  reasoning-model:
+    priority: 1
+    max_concurrency: 5
+  chat-model:
+    priority: 9
+    max_concurrency: 1
+  code:
+    priority: 5
+    max_concurrency: 2
