@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.env
+logs/
+benchmarks/results/
+# Keep the sample run artifacts as reference
+!benchmarks/results/sample-run.json
+!benchmarks/results/sample-run.md
+# Generated bench files (written by run-local-bench.sh)
+benchmarks/bench-config.yaml
+benchmarks/bench-config-standalone.yaml
+benchmarks/docker-compose.bench-standalone.yml

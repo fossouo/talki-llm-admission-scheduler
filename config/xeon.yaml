@@ -1,0 +1,51 @@
+# =============================================================================
+# Xeon-specific config for the admission scheduler
+#
+# Differences from config/default.yaml:
+#   - redis_url       → container-network DNS (admission-scheduler-redis:6379)
+#   - backend_litellm → host.docker.internal (requires extra_hosts in compose)
+#   - log_dir         → container path; bind-mounted from /mnt/talki-logs/...
+# =============================================================================
+scheduler:
+  redis_url: "redis://admission-scheduler-redis:6379/0"
+  backend_litellm_url: "http://host.docker.internal:4000"
+  worker_poll_timeout_seconds: 5
+  lease_watcher_interval_seconds: 10
+  integrity_check_interval_seconds: 60
+  log_dir: "/var/log/scheduler"
+  log_rotate_utc_midnight: true
+
+defaults:
+  max_concurrency: 3
+  max_queue_depth: 50
+  max_wait_seconds: 120
+  sync_timeout_seconds: 120
+  priority: 5
+  fallback_policy:
+    enabled: false
+
+models:
+  code:
+    max_concurrency: 2
+    max_queue_depth: 20
+    max_wait_seconds: 180
+    sync_timeout_seconds: 300
+    priority: 3
+  chat-fast:
+    max_concurrency: 4
+    max_queue_depth: 40
+    max_wait_seconds: 60
+    sync_timeout_seconds: 120
+    priority: 5
+  brain-exec:
+    max_concurrency: 1
+    max_queue_depth: 5
+    max_wait_seconds: 300
+    sync_timeout_seconds: 600
+    priority: 3
+  tool-worker:
+    max_concurrency: 6
+    max_queue_depth: 100
+    max_wait_seconds: 30
+    sync_timeout_seconds: 60
+    priority: 5

@@ -1,0 +1,13 @@
+services:
+  admission-scheduler:
+    environment:
+      SCHEDULER_CONFIG: /app/config/bench.yaml
+      SCHEDULER_LOG_DIR: /tmp/scheduler-logs
+    volumes:
+      - ./benchmarks/bench-config.yaml:/app/config/bench.yaml:ro
+    # Override the main docker-compose.yml volume that requires /mnt/talki-logs
+    # We use tmpfs so the container gets a writable /var/log/scheduler without
+    # requiring the host path to be Docker-shared.
+    tmpfs:
+      - /var/log/scheduler
+      - /mnt/talki-logs

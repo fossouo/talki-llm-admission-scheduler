@@ -1,0 +1,61 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Python cache / bytecode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv
+venv
+env
+
+# Test & benchmark artefacts
+tests/
+benchmarks/
+.pytest_cache
+.coverage
+coverage.xml
+htmlcov/
+
+# Linter / formatter caches
+.ruff_cache
+.mypy_cache
+
+# Editor config
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+
+# Logs (never bake logs into the image)
+logs/
+*.log
+*.jsonl
+
+# Node (shouldn't be here, but just in case)
+node_modules/
+
+# Docs (keep README.md for metadata; exclude everything else)
+docs/
+deploy/
+scripts/
+CHANGELOG.md
+CONTRIBUTING.md
+LICENSE
+
+# CI
+.github/

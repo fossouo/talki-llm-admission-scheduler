@@ -1,0 +1,64 @@
+services:
+
+  # ---------------------------------------------------------------------------
+  # Admission Scheduler — FastAPI sidecar to LiteLLM proxy
+  # ---------------------------------------------------------------------------
+  admission-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      # Bind on all interfaces: other Xeon services (brain, dev-agent, hermes)
+      # reach the scheduler on xeon:4001 from outside this compose stack.
+      - "0.0.0.0:4001:4001"
+    depends_on:
+      admission-scheduler-redis:
+        condition: service_healthy
+    environment:
+      # Mount the xeon-specific config; env var tells the app where to find it.
+      SCHEDULER_CONFIG: /app/config/xeon.yaml
+      SCHEDULER_LOG_DIR: /var/log/scheduler
+    volumes:
+      # JSONL event logs — host dir must be owned by UID 10001 (see runbook)
+      - /mnt/talki-logs/admission-scheduler:/var/log/scheduler
+      # Xeon config override (read-only; avoids rebuilding image for config tweaks)
+      - ./config/xeon.yaml:/app/config/xeon.yaml:ro
+    # host.docker.internal → Docker bridge gateway on Linux.
+    # Requires Docker Engine 20.10+.  Used by config/xeon.yaml for
+    # backend_litellm_url: "http://host.docker.internal:4000".
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - admission-net
+    # healthcheck is defined in the Dockerfile; compose inherits it.
+
+  # ---------------------------------------------------------------------------
+  # Redis 7 — scheduler state store
+  # Bound to 127.0.0.1:6390 on the host to avoid clashing with any existing
+  # Redis on 6379.  Only admission-scheduler accesses it via container-network
+  # DNS (admission-scheduler-redis:6379), so the host-side port is for operator
+  # debugging only (see runbook §inspect-redis).
+  # ---------------------------------------------------------------------------
+  admission-scheduler-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6390:6379"
+    volumes:
+      - admission-scheduler-redis-data:/data
+    networks:
+      - admission-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+networks:
+  admission-net:
+    driver: bridge
+
+volumes:
+  admission-scheduler-redis-data:
