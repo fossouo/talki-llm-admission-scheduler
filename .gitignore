@@ -12,3 +12,8 @@ benchmarks/results/
 benchmarks/bench-config.yaml
 benchmarks/bench-config-standalone.yaml
 benchmarks/docker-compose.bench-standalone.yml
+
+# Python build artifacts
+*.egg-info/
+build/
+dist/
