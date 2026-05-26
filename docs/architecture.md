@@ -243,15 +243,38 @@ One file per UTC day: `events-YYYY-MM-DD.jsonl`. Rotated at 00:00 UTC.
 
 **Base fields**: `ts` (RFC3339 ns), `request_id` (UUIDv7), `job_id` (UUIDv7), `model`, `event`, `caller`, `caller_metadata`, `priority`.
 
+**Optional base fields (v0.2)**:
+
+| Field | Type | Set on | Description |
+|---|---|---|---|
+| `backend_target` | string \| null | `dispatched`, `completed` | Physical backend that LiteLLM routed the request to (e.g. `dgx:8004`, `octominer:9393`). Parsed from the `x-litellm-deployment` response header; falls back to `x-litellm-model` header; then to the response body `model` field. Null if none of these are present (common in Phase 0 before verifying the Xeon LiteLLM proxy header config). |
+| `kv_pressure_hint` | object \| null | `dispatched` only | Optional GPU KV-cache pressure probe. Null in v0.2 (probe wired in v0.3). Shape when non-null: `{"source": "vllm_stats" \| "nvidia_smi" \| "none", "kv_cache_pct": float \| null, "captured_at": RFC3339 \| null}`. |
+
 **Per-event extras**:
 - `queued`: `queue_depth_at_admission`
-- `dispatched`: `wait_ms`
-- `completed`: `wait_ms, runtime_ms, tokens_prompt, tokens_completion`
+- `dispatched`: `wait_ms`, `backend_target` (null in v0.2), `kv_pressure_hint` (null in v0.2)
+- `completed`: `wait_ms, runtime_ms, tokens_prompt, tokens_completion`, `backend_target` (null until Xeon headers verified)
 - `failed`: `error_class, error_message, http_status`
 - `timeout`: `stage, waited_ms`
 - `cancelled`: `was_dispatched`
 - `rejected`: `queue_depth, capacity`
 - `worker_crash`: `lease_age_ms`
+
+**Example log lines (v0.2 schema)**:
+
+```jsonl
+{"ts":"2026-05-26T09:12:03.441Z","request_id":"0191e...","job_id":"0191f...","model":"chat-fast","event":"queued","caller":"dev-agent","caller_metadata":{},"priority":5,"queue_depth_at_admission":3}
+{"ts":"2026-05-26T09:12:04.882Z","request_id":"0191e...","job_id":"0191f...","model":"chat-fast","event":"dispatched","caller":"dev-agent","caller_metadata":{},"priority":5,"wait_ms":1441,"backend_target":null,"kv_pressure_hint":null}
+{"ts":"2026-05-26T09:12:07.209Z","request_id":"0191e...","job_id":"0191f...","model":"chat-fast","event":"completed","caller":"dev-agent","caller_metadata":{},"priority":5,"wait_ms":1441,"runtime_ms":2327,"tokens_prompt":48,"tokens_completion":16,"backend_target":"dgx:8004"}
+```
+
+**v0.2 schema migration note**:
+
+`backend_target` and `kv_pressure_hint` are added as optional fields. During
+early Phase 0 shadow mode both will frequently be `null` — `backend_target`
+until LiteLLM response-header parsing is verified against the actual proxy
+build on Xeon, `kv_pressure_hint` until the v0.3 probe lands. Downstream
+consumers MUST treat `null` as "not measured", not "zero load".
 
 ---
 

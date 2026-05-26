@@ -84,6 +84,33 @@ curl -fsS http://xeon:4001/metrics | grep -E '^(admission|queue|slots|failure|re
 - `slots_in_use` gauge never exceeds `slots_capacity` for any model during the synthetic load.
 - No Redis key leaks: after synthetic load completes, `KEYS slots:*:in_use` values are all `0`.
 
+**Observability checklist (Phase 0 JSONL validation)**:
+
+The v0.2 schema adds two fields that are the basis for the future GPU-aware
+roadmap. Verify their presence in the Phase 0 corpus:
+
+```bash
+# Check backend_target field appears in completed events
+jq 'select(.event=="completed") | .backend_target' events-*.jsonl | head -10
+
+# Expect: null for most events during Phase 0 (LiteLLM header not yet verified)
+# Expect: "dgx:8004" or similar once x-litellm-deployment header is confirmed
+
+# Check kv_pressure_hint field appears in dispatched events
+jq 'select(.event=="dispatched") | .kv_pressure_hint' events-*.jsonl | head -5
+# Expect: null for all Phase 0 events (v0.3 probe not yet wired)
+
+# Confirm no events are missing the fields entirely (field must be present, even if null)
+jq 'select(.event=="completed") | has("backend_target")' events-*.jsonl | sort | uniq -c
+# Expect: all "true"
+```
+
+These fields are captured from day 1 so the Phase 0 shadow corpus is usable
+as calibration data for future GPU-aware features without re-instrumentation.
+`backend_target` will be non-null once the LiteLLM proxy on Xeon is verified
+to emit `x-litellm-deployment` response headers (check with
+`curl -sI http://xeon:4000/v1/chat/completions` after a real request).
+
 **No production caller is reconfigured in this phase.** LiteLLM continues to serve all production traffic on `:4000`.
 
 ---

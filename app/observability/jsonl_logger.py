@@ -128,3 +128,71 @@ def build_base_event(
         "caller_metadata": caller_metadata or {},
         "priority": priority,
     }
+
+
+def build_dispatched_event(
+    job_id: str,
+    request_id: str,
+    model: str,
+    caller: str,
+    caller_metadata: dict[str, Any] | None,
+    priority: int,
+    *,
+    wait_ms: int,
+    backend_target: str | None = None,
+    kv_pressure_hint: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a complete 'dispatched' JSONL event including v0.2 schema fields.
+
+    New fields (v0.2):
+    - backend_target: physical backend that LiteLLM will route to (e.g.
+      'dgx:8004', 'octominer:9393').  Set from LiteLLM response headers on
+      completion; always None at dispatch time until the forwarder resolves it.
+    - kv_pressure_hint: optional GPU KV-cache pressure probe.  Always None in
+      v0.2 (wired-up probe is v0.3). Shape when non-null:
+        {"source": "vllm_stats"|"nvidia_smi"|"none",
+         "kv_cache_pct": float|null,
+         "captured_at": RFC3339|null}
+    """
+    return {
+        **build_base_event(
+            "dispatched", job_id, request_id, model, caller, caller_metadata, priority
+        ),
+        "wait_ms": wait_ms,
+        "backend_target": backend_target,
+        "kv_pressure_hint": kv_pressure_hint,
+    }
+
+
+def build_completed_event(
+    job_id: str,
+    request_id: str,
+    model: str,
+    caller: str,
+    caller_metadata: dict[str, Any] | None,
+    priority: int,
+    *,
+    wait_ms: int,
+    runtime_ms: int,
+    tokens_prompt: int = 0,
+    tokens_completion: int = 0,
+    backend_target: str | None = None,
+) -> dict[str, Any]:
+    """Build a complete 'completed' JSONL event including v0.2 schema fields.
+
+    New fields (v0.2):
+    - backend_target: physical backend resolved from the LiteLLM response.
+      Parsed from 'x-litellm-deployment' or 'x-litellm-model' response
+      headers; falls back to the 'model' field in the response body; set to
+      None if none of those are present.
+    """
+    return {
+        **build_base_event(
+            "completed", job_id, request_id, model, caller, caller_metadata, priority
+        ),
+        "wait_ms": wait_ms,
+        "runtime_ms": runtime_ms,
+        "tokens_prompt": tokens_prompt,
+        "tokens_completion": tokens_completion,
+        "backend_target": backend_target,
+    }

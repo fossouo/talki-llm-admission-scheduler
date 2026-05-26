@@ -228,11 +228,17 @@ Representative events:
 
 ```jsonl
 {"ts":"2026-05-26T09:12:03.441Z","request_id":"0191e...","job_id":"0191f...","model":"chat-fast","event":"queued","caller":"dev-agent","caller_metadata":{},"priority":5,"queue_depth_at_admission":3}
-{"ts":"2026-05-26T09:12:04.882Z","request_id":"0191e...","job_id":"0191f...","model":"chat-fast","event":"dispatched","caller":"dev-agent","caller_metadata":{},"priority":5,"wait_ms":1441}
-{"ts":"2026-05-26T09:12:07.209Z","request_id":"0191e...","job_id":"0191f...","model":"chat-fast","event":"completed","caller":"dev-agent","caller_metadata":{},"priority":5,"wait_ms":1441,"runtime_ms":2327,"tokens_prompt":48,"tokens_completion":16}
+{"ts":"2026-05-26T09:12:04.882Z","request_id":"0191e...","job_id":"0191f...","model":"chat-fast","event":"dispatched","caller":"dev-agent","caller_metadata":{},"priority":5,"wait_ms":1441,"backend_target":null,"kv_pressure_hint":null}
+{"ts":"2026-05-26T09:12:07.209Z","request_id":"0191e...","job_id":"0191f...","model":"chat-fast","event":"completed","caller":"dev-agent","caller_metadata":{},"priority":5,"wait_ms":1441,"runtime_ms":2327,"tokens_prompt":48,"tokens_completion":16,"backend_target":"dgx:8004"}
 {"ts":"2026-05-26T09:15:11.003Z","request_id":"0192a...","job_id":"0192b...","model":"code","event":"failed","caller":"brain-pr-merger","caller_metadata":{},"priority":3,"error_class":"backend_5xx","error_message":"502 from LiteLLM","http_status":502}
 {"ts":"2026-05-26T09:18:55.770Z","request_id":"0193c...","job_id":"0193d...","model":"brain-exec","event":"timeout","caller":"hermes-agent","caller_metadata":{},"priority":3,"stage":"queue","waited_ms":300012}
 ```
+
+`backend_target` on `dispatched` events is always `null` in v0.2 (resolved only
+after the backend responds). On `completed` events it is set from the
+`x-litellm-deployment` header when present, falling back to `x-litellm-model`
+then the response body `model` field. `kv_pressure_hint` is always `null` in
+v0.2 — the GPU pressure probe ships in v0.3.
 
 All events share the base fields `ts`, `request_id`, `job_id`, `model`, `event`, `caller`, `caller_metadata`, `priority`. Each event type adds specific fields (e.g. `wait_ms` on `dispatched`, `tokens_prompt`/`tokens_completion` on `completed`, `error_class` on `failed`).
 
@@ -310,6 +316,37 @@ Known open design questions (not blockers for prototype use):
 - **Config hot-reload** — SIGHUP handler that reloads YAML and adjusts slot capacity with a drain-then-resize semantic.
 - **Multi-instance horizontal scaling** — the Redis coordination layer is already designed for it; needs an integration test harness with N scheduler replicas behind a load balancer.
 - **Webhook callbacks** — `POST` to a configurable URL on job terminal events (completed, failed, timeout), for callers that prefer push over pull.
+
+---
+
+## Testing
+
+The test suite uses a two-tier approach:
+
+**Tier 1 — fakeredis (default, CI)**:  All 100+ tests in `tests/unit/` and
+`tests/integration/` run against [fakeredis](https://github.com/cunla/fakeredis-py)
+and require no external services. Run with:
+
+```bash
+pytest tests/ -x --tb=short
+```
+
+**Tier 2 — real Redis (optional, `@pytest.mark.real_redis`)**:  A separate
+set of tests in `tests/integration/test_real_redis.py` exercises the production
+Lua scripts against a real Redis 7 instance. fakeredis is sufficient for logic
+checks, but its Lua interpreter differs from Redis Lua 5.1 in ways that can
+hide bugs (NUL byte patterns, global `unpack`). These tests are **required
+before any PR touching `app/storage/redis_lua.py`**:
+
+```bash
+# Start Redis
+docker run -d --rm -p 6379:6379 redis:7-alpine
+
+# Run real-Redis tests against isolated DB 15
+REDIS_URL=redis://localhost:6379/15 pytest -m real_redis -v
+```
+
+See `tests/README.md` for the full policy and directory structure.
 
 ---
 

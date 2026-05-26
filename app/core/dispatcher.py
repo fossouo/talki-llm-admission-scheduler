@@ -18,7 +18,12 @@ import redis.asyncio as aioredis
 from app.backend.litellm_forwarder import LiteLLMForwarder
 from app.config import AppConfig
 from app.observability import metrics as m
-from app.observability.jsonl_logger import JSONLLogger, build_base_event
+from app.observability.jsonl_logger import (
+    JSONLLogger,
+    build_base_event,
+    build_completed_event,
+    build_dispatched_event,
+)
 from app.state import ErrorClass, EventType, JobStatus
 from app.storage.job_store import JobStore
 from app.storage.redis_keys import (
@@ -168,14 +173,21 @@ class DispatcherWorker:
             enqueue_ts = time.time()
         wait_s = max(0.0, time.time() - enqueue_ts)
 
-        # Log dispatched
+        # Log dispatched — backend_target is always None here; it is resolved
+        # from the LiteLLM response headers after the forward completes.
+        # kv_pressure_hint is always None in v0.2 (probe wired in v0.3).
         await self._logger.emit(
-            {
-                **build_base_event(
-                    EventType.DISPATCHED.value, job_id, request_id, model, caller, {}, priority
-                ),
-                "wait_ms": int(wait_s * 1000),
-            }
+            build_dispatched_event(
+                job_id,
+                request_id,
+                model,
+                caller,
+                {},
+                priority,
+                wait_ms=int(wait_s * 1000),
+                backend_target=None,
+                kv_pressure_hint=None,
+            )
         )
         m.queue_wait_seconds.labels(model=model).observe(wait_s)
 
@@ -190,17 +202,17 @@ class DispatcherWorker:
         except Exception:
             payload = {}
 
-        # Forward to LiteLLM
+        # Forward to LiteLLM — returns (response_body, backend_target)
         backend_start = time.time()
         try:
-            response = await self._forwarder.forward(
+            response, backend_target = await self._forwarder.forward(
                 payload,
                 timeout_s=float(self._model_cfg.sync_timeout_seconds),
             )
             backend_s = time.time() - backend_start
             await self._mark_completed(
                 job_id, request_id, model, caller, priority,
-                response, wait_s, backend_s,
+                response, wait_s, backend_s, backend_target,
             )
         except httpx.HTTPStatusError as exc:
             status_code = exc.response.status_code
@@ -245,8 +257,15 @@ class DispatcherWorker:
         response: dict[str, Any],
         wait_s: float,
         backend_s: float,
+        backend_target: str | None = None,
     ) -> None:
-        """Write completed status and response blob, then publish."""
+        """Write completed status and response blob, then publish.
+
+        backend_target (v0.2): physical backend string extracted by the
+        forwarder from LiteLLM response headers.  Stored in the JSONL log.
+        Frequently None during Phase 0 shadow mode until the Xeon LiteLLM
+        proxy build is verified to emit x-litellm-deployment headers.
+        """
         import gzip, json
 
         complete_ts = _iso_now()
@@ -276,15 +295,19 @@ class DispatcherWorker:
         await self._publish(job_id, JobStatus.COMPLETED.value)
         m.record_completion(model, wait_s, runtime_s, backend_s)
         await self._logger.emit(
-            {
-                **build_base_event(
-                    EventType.COMPLETED.value, job_id, request_id, model, caller, {}, priority
-                ),
-                "wait_ms": int(wait_s * 1000),
-                "runtime_ms": int(runtime_s * 1000),
-                "tokens_prompt": tokens_prompt,
-                "tokens_completion": tokens_completion,
-            }
+            build_completed_event(
+                job_id,
+                request_id,
+                model,
+                caller,
+                {},
+                priority,
+                wait_ms=int(wait_s * 1000),
+                runtime_ms=int(runtime_s * 1000),
+                tokens_prompt=tokens_prompt,
+                tokens_completion=tokens_completion,
+                backend_target=backend_target,
+            )
         )
 
     async def _mark_failed(
