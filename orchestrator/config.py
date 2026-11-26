@@ -73,8 +73,8 @@ ROLES: dict[str, Role] = {
         primary_alias="code",
         fallback_alias="brain-exec",
         daily_token_cap=300_000,
-        llm_timeout_s=600.0,        # heavy + queue éventuelle
-        fallback_timeout_s=300.0,
+        llm_timeout_s=1200.0,        # heavy + queue éventuelle
+        fallback_timeout_s=600.0,
     ),
     "backend": Role(
         name="backend",
@@ -83,8 +83,8 @@ ROLES: dict[str, Role] = {
         primary_alias="code",
         fallback_alias="brain-exec",
         daily_token_cap=500_000,
-        llm_timeout_s=600.0,
-        fallback_timeout_s=300.0,
+        llm_timeout_s=1200.0,
+        fallback_timeout_s=600.0,
     ),
     "frontend": Role(
         name="frontend",
@@ -93,8 +93,8 @@ ROLES: dict[str, Role] = {
         primary_alias="code",
         fallback_alias="brain-exec",
         daily_token_cap=400_000,
-        llm_timeout_s=600.0,
-        fallback_timeout_s=300.0,
+        llm_timeout_s=1200.0,
+        fallback_timeout_s=600.0,
     ),
     "qa": Role(
         name="qa",
@@ -103,7 +103,7 @@ ROLES: dict[str, Role] = {
         primary_alias="brain-exec",
         fallback_alias=None,
         daily_token_cap=300_000,
-        llm_timeout_s=300.0,
+        llm_timeout_s=600.0,
         fallback_timeout_s=0.0,
     ),
     "doc": Role(
@@ -113,7 +113,7 @@ ROLES: dict[str, Role] = {
         primary_alias="brain-exec",
         fallback_alias=None,
         daily_token_cap=150_000,
-        llm_timeout_s=300.0,
+        llm_timeout_s=600.0,
         fallback_timeout_s=0.0,
     ),
     "triage": Role(
