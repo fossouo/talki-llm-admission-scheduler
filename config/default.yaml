@@ -1,10 +1,10 @@
 scheduler:
   redis_url: "redis://localhost:6379/0"
-  backend_litellm_url: "http://xeon:4000"
+  backend_litellm_url: "http://inference-host:4000"
   worker_poll_timeout_seconds: 5
   lease_watcher_interval_seconds: 10
   integrity_check_interval_seconds: 60
-  log_dir: "/mnt/talki-logs/admission-scheduler"
+  log_dir: "/mnt/archive-logs/admission-scheduler"
   log_rotate_utc_midnight: true
 
 defaults:
@@ -23,7 +23,7 @@ models:
     max_wait_seconds: 180
     sync_timeout_seconds: 300
     priority: 3
-  chat-fast:
+  chat-model:
     max_concurrency: 4
     max_queue_depth: 40
     max_wait_seconds: 60

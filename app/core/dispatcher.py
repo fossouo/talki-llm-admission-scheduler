@@ -199,7 +199,9 @@ class DispatcherWorker:
             payload = json.loads(
                 payload_json_bytes.decode() if isinstance(payload_json_bytes, bytes) else payload_json_bytes
             )
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"JSON PARSE ERROR: {e} | bytes: {payload_json_bytes!r}")
             payload = {}
 
         # Forward to LiteLLM — returns (response_body, backend_target)

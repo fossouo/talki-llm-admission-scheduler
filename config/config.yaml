@@ -11,9 +11,30 @@ models:
   reasoning-model:
     priority: 1
     max_concurrency: 5
+  reasoning-fast:
+    priority: 1
+    max_concurrency: 5
   chat-model:
+    priority: 9
+    max_concurrency: 1
+  chat-fast:
     priority: 9
     max_concurrency: 1
   code:
     priority: 5
     max_concurrency: 2
+  tool-worker:
+    priority: 5
+    max_concurrency: 3
+  brain-fast:
+    priority: 5
+    max_concurrency: 3
+  brain-exec:
+    priority: 5
+    max_concurrency: 3
+  tool-caller:
+    priority: 5
+    max_concurrency: 3
+  gpt-4o-mini:
+    priority: 9
+    max_concurrency: 5
