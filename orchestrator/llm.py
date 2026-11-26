@@ -8,6 +8,7 @@ Philosophie charte §7 :
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -89,8 +90,15 @@ async def _try_one(
         "max_tokens": max_tokens,
         "temperature": temperature,
     }
-    if extra_body:
-        payload.update(extra_body)
+    
+    # Standard V2 Metadata Injection
+    # Copie : ne pas muter le dict de l'appelant ; tolère metadata=None.
+    extra_body = dict(extra_body or {})
+    metadata = dict(extra_body.get("metadata") or {})
+    metadata.setdefault("project_id", os.environ.get("PROJECT_ID", "admission-scheduler"))
+    extra_body["metadata"] = metadata
+    
+    payload.update(extra_body)
 
     try:
         async with httpx.AsyncClient(timeout=timeout_s) as cli:

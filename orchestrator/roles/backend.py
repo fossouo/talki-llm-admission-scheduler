@@ -289,9 +289,11 @@ class BackendAgent:
             return None
         if reservation is not None:
             await commit(red, reservation, res.total_tokens)
+        log.info("LLM RAW RESPONSE: %s", res.content[:1000])
 
         data = _extract_json(res.content)
         if not data:
+            log.warning("Backend LLM output JSON invalide : %s", res.content[:500])
             await log_event(
                 "backend", "json-parse-fail", issue=issue["number"], raw=res.content[:300],
             )
@@ -302,7 +304,8 @@ class BackendAgent:
             return None
 
         files = data.get("files") or []
-        if not files:
+        if not files and not data.get("tests", []):
+            log.warning("Backend LLM output sans fichiers : %s", res.content[:500])
             return None
 
         return GeneratedChanges(
@@ -558,9 +561,11 @@ class BackendAgent:
             return None
         if reservation is not None:
             await commit(red, reservation, res.total_tokens)
+        log.info("LLM RAW RESPONSE: %s", res.content[:1000])
 
         data = _extract_json(res.content)
         if not data:
+            log.warning("Backend LLM output JSON invalide : %s", res.content[:500])
             await log_event(
                 "backend", "json-parse-fail", issue=issue["number"], phase="retry",
                 raw=res.content[:300],
