@@ -4,7 +4,7 @@
 # Differences from config/default.yaml:
 #   - redis_url       → container-network DNS (admission-scheduler-redis:6379)
 #   - backend_litellm → host.docker.internal (requires extra_hosts in compose)
-#   - log_dir         → container path; bind-mounted from /mnt/talki-logs/...
+#   - log_dir         → container path; bind-mounted from /mnt/archive-logs/...
 # =============================================================================
 scheduler:
   redis_url: "redis://admission-scheduler-redis:6379/0"
@@ -31,7 +31,7 @@ models:
     max_wait_seconds: 180
     sync_timeout_seconds: 300
     priority: 3
-  chat-fast:
+  chat-model:
     max_concurrency: 4
     max_queue_depth: 40
     max_wait_seconds: 60
